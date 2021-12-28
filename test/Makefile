@@ -1,7 +1,7 @@
 CC = gcc
 CFLAGS = -std=c99 -Wall -g
 INCLUDE = 
-LIBS = -lavutil -lavformat -lavcodec -lavutil -lswscale -lSDL2
+LIBS = -lavformat -lavcodec -lavutil -lswscale -lSDL2 -lavfilter
 OBJS = main.o
 
 .PHONY: clean
