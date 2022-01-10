@@ -1,7 +1,12 @@
 CXX = g++
 CXXFLAGS = -std=c++11 -Wall -g
+THIRDPATH = ./libav
 INCLUDE = 
-LIBS = -lavformat -lavcodec -lavutil -lswscale -lSDL2 -lavfilter
+# LIBS = -lavformat -lavcodec -lavutil -lswscale -lSDL2 -lavfilter
+LIBS = $(THIRDPATH)/libavcodec.a $(THIRDPATH)/libavdevice.a
+LIBS += $(THIRDPATH)/libavfilter.a $(THIRDPATH)/libavformat.a
+LIBS += $(THIRDPATH)/libavutil.a $(THIRDPATH)/libswresample.a
+LIBS += $(THIRDPATH)/libswscale.a
 OBJS = ffavcpp.o ffavfilter.o ffavhw.o ffavopt.o ffcmdutil.o 
 
 .PHONY: clean
