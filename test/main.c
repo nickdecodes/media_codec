@@ -143,7 +143,8 @@ static int load_video_encoder(StreamContext *dec_ctx, StreamContext *enc_ctx, St
     }
     
     // 设置参数
-    // av_opt_set(enc_ctx->vcodec_ctx->priv_data, "preset", "fast", 0);
+    // av_opt_set(enc_ctx->vcodec_ctx->priv_data, "preset", "veryfast", 0);
+    av_opt_copy(enc_ctx->vcodec_ctx->priv_data, dec_ctx->vcodec_ctx->priv_data);
     enc_ctx->vcodec_ctx->height = dec_ctx->vcodec_ctx->height;
     enc_ctx->vcodec_ctx->width = dec_ctx->vcodec_ctx->width;
     enc_ctx->vcodec_ctx->sample_aspect_ratio = dec_ctx->vcodec_ctx->sample_aspect_ratio;
@@ -158,7 +159,6 @@ static int load_video_encoder(StreamContext *dec_ctx, StreamContext *enc_ctx, St
     enc_ctx->vcodec_ctx->rc_max_rate = dec_ctx->vcodec_ctx->rc_max_rate;
     enc_ctx->vcodec_ctx->rc_min_rate = dec_ctx->vcodec_ctx->rc_min_rate;
     enc_ctx->vcodec_ctx->time_base = av_inv_q(input_framerate);
-    enc_ctx->vstream->time_base = enc_ctx->vcodec_ctx->time_base;
     
     if (avcodec_open2(enc_ctx->vcodec_ctx, enc_ctx->vcodec, NULL) < 0) {
         av_log(NULL, AV_LOG_ERROR, "Could not open the codec!\n");
@@ -294,7 +294,7 @@ static int encode_video(StreamContext *dec_ctx, StreamContext *enc_ctx, AVFrame 
         output_packet->stream_index = dec_ctx->vindex;
         output_packet->duration = enc_ctx->vstream->time_base.den / enc_ctx->vstream->time_base.num / dec_ctx->vstream->avg_frame_rate.num * dec_ctx->vstream->avg_frame_rate.den;
 
-        av_packet_rescale_ts(output_packet, dec_ctx->vstream->time_base, enc_ctx->vstream->time_base);
+        av_packet_rescale_ts(output_packet, enc_ctx->vstream->time_base, dec_ctx->vstream->time_base);
         ret = av_interleaved_write_frame(enc_ctx->avfmt_ctx, output_packet);
         if (ret != 0) { 
             av_log(NULL, AV_LOG_ERROR, "Error %d while receiving packet from decoder: %s\n", ret, av_err2str(ret));
@@ -389,6 +389,7 @@ static int transcode_audio(StreamContext *dec_ctx, StreamContext *enc_ctx, AVPac
 
 static int remux(AVPacket *pkt, AVFormatContext *avfc, AVRational dec_tb, AVRational enc_tb) {
     av_packet_rescale_ts(pkt, dec_tb, enc_tb);
+    pkt->pos = -1;
     if (av_interleaved_write_frame(avfc, pkt) < 0) {
         av_log(NULL, AV_LOG_ERROR, "error while copying stream packet\n"); 
         return -1; 
@@ -419,7 +420,10 @@ static int transcode(StreamContext *dec_ctx, StreamContext *enc_ctx, StreamParam
                 }
                 av_packet_unref(input_packet);
             } else {
-                if (remux(input_packet, enc_ctx->avfmt_ctx, dec_ctx->astream->time_base, enc_ctx->astream->time_base)) {
+                if (avcodec_parameters_copy(enc_ctx->vstream->codecpar, dec_ctx->vstream->codecpar) < 0) {
+                    av_log(NULL, AV_LOG_ERROR, "Failed to copy codec parameters\n");
+                }
+                if (remux(input_packet, enc_ctx->avfmt_ctx, dec_ctx->astream->time_base, enc_ctx->astream->time_base) < 0) {
                     return -1;
                 }
             }
@@ -430,19 +434,25 @@ static int transcode(StreamContext *dec_ctx, StreamContext *enc_ctx, StreamParam
                 }
                 av_packet_unref(input_packet);
             } else {
-                if (remux(input_packet, enc_ctx->avfmt_ctx, dec_ctx->astream->time_base, enc_ctx->astream->time_base)) {
+                if (avcodec_parameters_copy(enc_ctx->astream->codecpar, dec_ctx->astream->codecpar) < 0) {
+                    av_log(NULL, AV_LOG_ERROR, "Failed to copy codec parameters\n");
+                }
+                if (remux(input_packet, enc_ctx->avfmt_ctx, dec_ctx->astream->time_base, enc_ctx->astream->time_base) < 0) {
                     return -1;
                 }
             }
         } else {
+            if (remux(input_packet, enc_ctx->avfmt_ctx, dec_ctx->astream->time_base, enc_ctx->astream->time_base) < 0) {
+                return -1;
+            }
             av_log(NULL, AV_LOG_ERROR, "ignoring all non video or audio packets\n");
         }
     }
 
     // flush encoder
-    if (encode_video(dec_ctx, enc_ctx, NULL)) {
-        return -1;
-    }
+    // if (encode_video(dec_ctx, enc_ctx, NULL)) {
+    //     return -1;
+    // }
 
     av_write_trailer(enc_ctx->avfmt_ctx);
     

@@ -1,446 +1,522 @@
-/* 
- * Copyright <YEAR> <COPYRIGHT HOLDER>
- *
- * Redistribution and use in source and binary forms, 
- * with or without modification, are permitted provided 
- * that the following conditions are met:
- * 
- * 1. Redistributions of source code must retain the above copyright notice, 
- *    this list of conditions and the following disclaimer.
- * 2. Redistributions in binary form must reproduce the above copyright notice, 
- *    this list of conditions and the following disclaimer in the documentation 
- *    and/or other materials provided with the distribution.
- * 3. Neither the name of the copyright holder nor the names of its contributors 
- *    may be used to endorse or promote products derived from this software 
- *    without specific prior written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR
- * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND 
- * FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR 
- * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR 
- * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR 
- * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND 
- * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR 
- * TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, 
- * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.  
- */
 #include <libavcodec/avcodec.h>
 #include <libavformat/avformat.h>
 #include <libavutil/timestamp.h>
+#include <libavutil/opt.h>
 #include <stdio.h>
 #include <stdarg.h>
 #include <stdlib.h>
-#include <libavutil/opt.h>
 #include <string.h>
 #include <inttypes.h>
-// #include "video_debugging.h"
 
-typedef struct StreamingParams {
-  char copy_video;
-  char copy_audio;
-  char *output_extension;
-  char *muxer_opt_key;
-  char *muxer_opt_value;
-  char *video_codec;
-  char *audio_codec;
-  char *codec_priv_key;
-  char *codec_priv_value;
-} StreamingParams;
+typedef struct StreamParams {
+    char copy_video;
+    char copy_audio;
+    char *output_extension;
+    char *muxer_opt_key;
+    char *muxer_opt_value;
+    char *video_codec;
+    char *audio_codec;
+    char *codec_priv_key;
+    char *codec_priv_value;
+} StreamParams;
 
-typedef struct StreamingContext {
-  AVFormatContext *avfc;
-  AVCodec *video_avc;
-  AVCodec *audio_avc;
-  AVStream *video_avs;
-  AVStream *audio_avs;
-  AVCodecContext *video_avcc;
-  AVCodecContext *audio_avcc;
-  int video_index;
-  int audio_index;
-  char *filename;
-} StreamingContext;
+typedef struct StreamContext {
+    AVFormatContext *avfmt_ctx;
+    AVCodec *vcodec;
+    AVCodec *acodec;
+    AVStream *vstream;
+    AVStream *astream;
+    AVCodecContext *vcodec_ctx;
+    AVCodecContext *acodec_ctx;
+    int vindex;
+    int aindex;
+    char *filename;
+} StreamContext;
 
-int fill_stream_info(AVStream *avs, AVCodec **avc, AVCodecContext **avcc) {
-  *avc = avcodec_find_decoder(avs->codecpar->codec_id);
-  if (!*avc) {printf("failed to find the codec"); return -1;}
+static int fill_stream_info(AVStream *av_stream, AVCodec **av_codec, AVCodecContext **av_codec_ctx) {
+    int ret = 0;
+    *av_codec = avcodec_find_decoder(av_stream->codecpar->codec_id);
+    if (!*av_codec) {
+        av_log(NULL, AV_LOG_ERROR, "Not find this codec\n");
+        return -1;
+    }
 
-  *avcc = avcodec_alloc_context3(*avc);
-  if (!*avcc) {printf("failed to alloc memory for codec context"); return -1;}
+    *av_codec_ctx = avcodec_alloc_context3(*av_codec);
+    if (!*av_codec_ctx) {
+        av_log(NULL, AV_LOG_ERROR, "Failed to alloc memory for codec context\n");
+        return -1;
+    }
 
-  if (avcodec_parameters_to_context(*avcc, avs->codecpar) < 0) {printf("failed to fill codec context"); return -1;}
+    if ((ret = avcodec_parameters_to_context(*av_codec_ctx, av_stream->codecpar)) < 0) {
+        av_log(NULL, AV_LOG_ERROR, "Failed to fill codec context\n");
+        return ret;
+    }
 
-  if (avcodec_open2(*avcc, *avc, NULL) < 0) {printf("failed to open codec"); return -1;}
-  return 0;
+    if ((ret = avcodec_open2(*av_codec_ctx, *av_codec, NULL)) < 0) {
+        av_log(NULL, AV_LOG_ERROR, "Failed to open codec\n");
+        return ret;
+    }
+    return ret;
 }
 
-int open_media(const char *in_filename, AVFormatContext **avfc) {
-  *avfc = avformat_alloc_context();
-  if (!*avfc) {printf("failed to alloc memory for format"); return -1;}
+static int load_input_file(const char *filename, AVFormatContext **avfmt_ctx) {
+    int ret = 0;
+    *avfmt_ctx = avformat_alloc_context();
+    if (!*avfmt_ctx) {
+        av_log(NULL, AV_LOG_ERROR, "Alloc AVFormatContext failed\n");
+        return -1;
+    }
 
-  if (avformat_open_input(avfc, in_filename, NULL, NULL) != 0) {printf("failed to open input file %s", in_filename); return -1;}
+    if ((ret = avformat_open_input(avfmt_ctx, filename, NULL, NULL)) < 0) {
+        av_log(NULL, AV_LOG_ERROR, "Cannot open input file\n");
+        return ret;
+    }
 
-  if (avformat_find_stream_info(*avfc, NULL) < 0) {printf("failed to get stream info"); return -1;}
-  return 0;
+    if ((ret = avformat_find_stream_info(*avfmt_ctx, NULL)) < 0) {
+        av_log(NULL, AV_LOG_ERROR, "Cannot find stream information\n");
+        return ret;
+    }
+    return ret;
 }
 
-int prepare_decoder(StreamingContext *sc) {
-  for (int i = 0; i < sc->avfc->nb_streams; i++) {
-    if (sc->avfc->streams[i]->codecpar->codec_type == AVMEDIA_TYPE_VIDEO) {
-      sc->video_avs = sc->avfc->streams[i];
-      sc->video_index = i;
+static int load_input_decoder(StreamContext *sc) {
+    unsigned int i;
+    for (i = 0; i < sc->avfmt_ctx->nb_streams; i++) {
+        if (sc->avfmt_ctx->streams[i]->codecpar->codec_type == AVMEDIA_TYPE_VIDEO) {
+            sc->vstream = sc->avfmt_ctx->streams[i];
+            sc->vindex = i;
+            if (fill_stream_info(sc->vstream, &sc->vcodec, &sc->vcodec_ctx)) {
+                return -1;
+            }
+        } else if (sc->avfmt_ctx->streams[i]->codecpar->codec_type == AVMEDIA_TYPE_AUDIO) {
+            sc->astream = sc->avfmt_ctx->streams[i];
+            sc->aindex = i;
+            if (fill_stream_info(sc->astream, &sc->acodec, &sc->acodec_ctx)) {
+                return -1;
+            }
+        } else {
+            av_log(NULL, AV_LOG_ERROR, "Skipping streams other than audio and video\n");
+        }
+    }
+    return 0;
+}
 
-      if (fill_stream_info(sc->video_avs, &sc->video_avc, &sc->video_avcc)) {return -1;}
-    } else if (sc->avfc->streams[i]->codecpar->codec_type == AVMEDIA_TYPE_AUDIO) {
-      sc->audio_avs = sc->avfc->streams[i];
-      sc->audio_index = i;
+static int open_input_file(StreamContext *dec_ctx) {
+    int ret = 0;
+    // 加载输入文件/流
+    if ((ret = load_input_file(dec_ctx->filename, &dec_ctx->avfmt_ctx) < 0)) {
+        av_log(NULL, AV_LOG_ERROR, "load input file failed!\n");
+        return ret;
+    }
+    // 加载解码器
+    if ((ret = load_input_decoder(dec_ctx)) < 0) {
+        av_log(NULL, AV_LOG_ERROR, "load input coder failed!\n");
+        return ret;
+    }
+    return ret;
+}
 
-      if (fill_stream_info(sc->audio_avs, &sc->audio_avc, &sc->audio_avcc)) {return -1;}
+static int load_output_file(const char *filename, AVFormatContext **av_fmt_ctx) {
+    int ret = 0;
+    avformat_alloc_output_context2(av_fmt_ctx, NULL, NULL, filename);
+    if (!*av_fmt_ctx) {
+        av_log(NULL, AV_LOG_ERROR, "Could not allocate memory for output format!\n");
+        return -1;
+    }
+    return ret;
+}
+
+static int load_video_encoder(StreamContext *dec_ctx, StreamContext *enc_ctx, StreamParams *sp) {
+    AVRational input_framerate = av_guess_frame_rate(dec_ctx->avfmt_ctx, dec_ctx->vstream, NULL);
+    enc_ctx->vstream = avformat_new_stream(enc_ctx->avfmt_ctx, NULL);
+
+    enc_ctx->vcodec = avcodec_find_encoder_by_name(sp->video_codec);
+    if (!enc_ctx->vcodec) {
+        av_log(NULL, AV_LOG_ERROR, "Could not find the proper codec!\n");
+        return -1;
+    }
+
+    enc_ctx->vcodec_ctx = avcodec_alloc_context3(enc_ctx->vcodec);
+    if (!enc_ctx->vcodec_ctx) {
+        av_log(NULL, AV_LOG_ERROR, "Could not allocated memory for codec context!\n");
+        return -1;
+    }
+    
+    // 设置参数
+    // av_opt_set(enc_ctx->vcodec_ctx->priv_data, "preset", "fast", 0);
+    enc_ctx->vcodec_ctx->height = dec_ctx->vcodec_ctx->height;
+    enc_ctx->vcodec_ctx->width = dec_ctx->vcodec_ctx->width;
+    enc_ctx->vcodec_ctx->sample_aspect_ratio = dec_ctx->vcodec_ctx->sample_aspect_ratio;
+    if (enc_ctx->vcodec->pix_fmts) {
+        enc_ctx->vcodec_ctx->pix_fmt = enc_ctx->vcodec->pix_fmts[0];
     } else {
-      printf("skipping streams other than audio and video");
+        enc_ctx->vcodec_ctx->pix_fmt = dec_ctx->vcodec_ctx->pix_fmt;
     }
-  }
-
-  return 0;
+    printf("%lld\n", dec_ctx->vcodec_ctx->bit_rate);
+    enc_ctx->vcodec_ctx->bit_rate = dec_ctx->vcodec_ctx->bit_rate;
+    enc_ctx->vcodec_ctx->rc_buffer_size = dec_ctx->vcodec_ctx->rc_buffer_size;
+    enc_ctx->vcodec_ctx->rc_max_rate = dec_ctx->vcodec_ctx->rc_max_rate;
+    enc_ctx->vcodec_ctx->rc_min_rate = dec_ctx->vcodec_ctx->rc_min_rate;
+    enc_ctx->vcodec_ctx->time_base = av_inv_q(input_framerate);
+    enc_ctx->vstream->time_base = enc_ctx->vcodec_ctx->time_base;
+    
+    if (avcodec_open2(enc_ctx->vcodec_ctx, enc_ctx->vcodec, NULL) < 0) {
+        av_log(NULL, AV_LOG_ERROR, "Could not open the codec!\n");
+        return -1;
+    }
+    avcodec_parameters_from_context(enc_ctx->vstream->codecpar, enc_ctx->vcodec_ctx);
+    return 0;
 }
 
-int prepare_video_encoder(StreamingContext *sc, AVCodecContext *decoder_ctx, AVRational input_framerate, StreamingParams sp) {
-  sc->video_avs = avformat_new_stream(sc->avfc, NULL);
+static int load_audio_encoder(StreamContext *enc_ctx, int sample_rate, StreamParams *sp) {
+    enc_ctx->astream = avformat_new_stream(enc_ctx->avfmt_ctx, NULL);
 
-  sc->video_avc = avcodec_find_encoder_by_name(sp.video_codec);
-  if (!sc->video_avc) {printf("could not find the proper codec"); return -1;}
-
-  sc->video_avcc = avcodec_alloc_context3(sc->video_avc);
-  if (!sc->video_avcc) {printf("could not allocated memory for codec context"); return -1;}
-
-  // av_opt_set(sc->video_avcc->priv_data, "preset", "fast", 0);
-  // if (sp.codec_priv_key && sp.codec_priv_value)
-  //   av_opt_set(sc->video_avcc->priv_data, sp.codec_priv_key, sp.codec_priv_value, 0);
-
-  sc->video_avcc->height = decoder_ctx->height;
-  sc->video_avcc->width = decoder_ctx->width;
-  sc->video_avcc->sample_aspect_ratio = decoder_ctx->sample_aspect_ratio;
-  if (sc->video_avc->pix_fmts)
-    sc->video_avcc->pix_fmt = sc->video_avc->pix_fmts[0];
-  else
-    sc->video_avcc->pix_fmt = decoder_ctx->pix_fmt;
-
-  sc->video_avcc->bit_rate = 1 * 1000 * 1000;
-  // sc->video_avcc->rc_buffer_size = 4 * 1000 * 1000;
-  // sc->video_avcc->rc_max_rate = 2 * 1000 * 1000;
-  // sc->video_avcc->rc_min_rate = 2.5 * 1000 * 1000;
-
-  sc->video_avcc->time_base = av_inv_q(input_framerate);
-  sc->video_avs->time_base = sc->video_avcc->time_base;
-
-  if (avcodec_open2(sc->video_avcc, sc->video_avc, NULL) < 0) {printf("could not open the codec"); return -1;}
-  avcodec_parameters_from_context(sc->video_avs->codecpar, sc->video_avcc);
-  return 0;
-}
-
-int prepare_audio_encoder(StreamingContext *sc, int sample_rate, StreamingParams sp){
-  sc->audio_avs = avformat_new_stream(sc->avfc, NULL);
-
-  sc->audio_avc = avcodec_find_encoder_by_name(sp.audio_codec);
-  if (!sc->audio_avc) {printf("could not find the proper codec"); return -1;}
-
-  sc->audio_avcc = avcodec_alloc_context3(sc->audio_avc);
-  if (!sc->audio_avcc) {printf("could not allocated memory for codec context"); return -1;}
-
-  int OUTPUT_CHANNELS = 2;
-  int OUTPUT_BIT_RATE = 196000;
-  sc->audio_avcc->channels       = OUTPUT_CHANNELS;
-  sc->audio_avcc->channel_layout = av_get_default_channel_layout(OUTPUT_CHANNELS);
-  sc->audio_avcc->sample_rate    = sample_rate;
-  sc->audio_avcc->sample_fmt     = sc->audio_avc->sample_fmts[0];
-  sc->audio_avcc->bit_rate       = OUTPUT_BIT_RATE;
-  sc->audio_avcc->time_base      = (AVRational){1, sample_rate};
-
-  sc->audio_avcc->strict_std_compliance = FF_COMPLIANCE_EXPERIMENTAL;
-
-  sc->audio_avs->time_base = sc->audio_avcc->time_base;
-
-  if (avcodec_open2(sc->audio_avcc, sc->audio_avc, NULL) < 0) {printf("could not open the codec"); return -1;}
-  avcodec_parameters_from_context(sc->audio_avs->codecpar, sc->audio_avcc);
-  return 0;
-}
-
-int prepare_copy(AVFormatContext *avfc, AVStream **avs, AVCodecParameters *decoder_par) {
-  *avs = avformat_new_stream(avfc, NULL);
-  avcodec_parameters_copy((*avs)->codecpar, decoder_par);
-  return 0;
-}
-
-int remux(AVPacket **pkt, AVFormatContext **avfc, AVRational decoder_tb, AVRational encoder_tb) {
-  av_packet_rescale_ts(*pkt, decoder_tb, encoder_tb);
-  if (av_interleaved_write_frame(*avfc, *pkt) < 0) { printf("error while copying stream packet"); return -1; }
-  return 0;
-}
-
-int encode_video(StreamingContext *decoder, StreamingContext *encoder, AVFrame *input_frame) {
-  if (input_frame) input_frame->pict_type = AV_PICTURE_TYPE_NONE;
-
-  AVPacket *output_packet = av_packet_alloc();
-  if (!output_packet) {printf("could not allocate memory for output packet"); return -1;}
-
-  int response = avcodec_send_frame(encoder->video_avcc, input_frame);
-
-  while (response >= 0) {
-    response = avcodec_receive_packet(encoder->video_avcc, output_packet);
-    if (response == AVERROR(EAGAIN) || response == AVERROR_EOF) {
-      break;
-    } else if (response < 0) {
-      printf("Error while receiving packet from encoder: %s", av_err2str(response));
-      return -1;
+    enc_ctx->acodec = avcodec_find_encoder_by_name(sp->audio_codec);
+    if (!enc_ctx->acodec) {
+        av_log(NULL, AV_LOG_ERROR, "Could not find the proper codec!\n");
+        return -1;
     }
 
-    output_packet->stream_index = decoder->video_index;
-    output_packet->duration = encoder->video_avs->time_base.den / encoder->video_avs->time_base.num / decoder->video_avs->avg_frame_rate.num * decoder->video_avs->avg_frame_rate.den;
+    enc_ctx->acodec_ctx = avcodec_alloc_context3(enc_ctx->acodec);
+    if (!enc_ctx->acodec_ctx) {
+        av_log(NULL, AV_LOG_ERROR, "Could not allocated memory for codec context!\n");
+        return -1;
+    }
+    
+    // 设置参数
+    int OUTPUT_CHANNELS = 2;
+    int OUTPUT_BIT_RATE = 196000;
+    enc_ctx->acodec_ctx->channels = OUTPUT_CHANNELS;
+    enc_ctx->acodec_ctx->channel_layout = av_get_default_channel_layout(OUTPUT_CHANNELS);
+    enc_ctx->acodec_ctx->sample_rate = sample_rate;
+    enc_ctx->acodec_ctx->sample_fmt = enc_ctx->acodec->sample_fmts[0];
+    enc_ctx->acodec_ctx->bit_rate = OUTPUT_BIT_RATE;
+    enc_ctx->acodec_ctx->time_base = (AVRational){1, sample_rate};
+    enc_ctx->acodec_ctx->strict_std_compliance = FF_COMPLIANCE_EXPERIMENTAL;
+    enc_ctx->astream->time_base = enc_ctx->acodec_ctx->time_base;
 
-    av_packet_rescale_ts(output_packet, decoder->video_avs->time_base, encoder->video_avs->time_base);
-    response = av_interleaved_write_frame(encoder->avfc, output_packet);
-    if (response != 0) { printf("Error %d while receiving packet from decoder: %s", response, av_err2str(response)); return -1;}
-  }
-  av_packet_unref(output_packet);
-  av_packet_free(&output_packet);
-  return 0;
+    if (avcodec_open2(enc_ctx->acodec_ctx, enc_ctx->acodec, NULL) < 0) {
+        av_log(NULL, AV_LOG_ERROR, "Could not open the codec!\n");
+        return -1;
+    }
+    avcodec_parameters_from_context(enc_ctx->astream->codecpar, enc_ctx->acodec_ctx);
+    return 0;
 }
 
-int encode_audio(StreamingContext *decoder, StreamingContext *encoder, AVFrame *input_frame) {
-  AVPacket *output_packet = av_packet_alloc();
-  if (!output_packet) {printf("could not allocate memory for output packet"); return -1;}
-
-  int response = avcodec_send_frame(encoder->audio_avcc, input_frame);
-
-  while (response >= 0) {
-    response = avcodec_receive_packet(encoder->audio_avcc, output_packet);
-    if (response == AVERROR(EAGAIN) || response == AVERROR_EOF) {
-      break;
-    } else if (response < 0) {
-      printf("Error while receiving packet from encoder: %s", av_err2str(response));
-      return -1;
-    }
-
-    output_packet->stream_index = decoder->audio_index;
-
-    av_packet_rescale_ts(output_packet, decoder->audio_avs->time_base, encoder->audio_avs->time_base);
-    response = av_interleaved_write_frame(encoder->avfc, output_packet);
-    if (response != 0) { printf("Error %d while receiving packet from decoder: %s", response, av_err2str(response)); return -1;}
-  }
-  av_packet_unref(output_packet);
-  av_packet_free(&output_packet);
-  return 0;
+static int reload_params(AVFormatContext *avfmt_ctx, AVStream **avstream, AVCodecParameters *avcodec_par) {
+    *avstream = avformat_new_stream(avfmt_ctx, NULL);
+    avcodec_parameters_copy((*avstream)->codecpar, avcodec_par);
+    return 0;
 }
 
-int transcode_audio(StreamingContext *decoder, StreamingContext *encoder, AVPacket *input_packet, AVFrame *input_frame) {
-  int response = avcodec_send_packet(decoder->audio_avcc, input_packet);
-  if (response < 0) {printf("Error while sending packet to decoder: %s", av_err2str(response)); return response;}
-
-  while (response >= 0) {
-    response = avcodec_receive_frame(decoder->audio_avcc, input_frame);
-    if (response == AVERROR(EAGAIN) || response == AVERROR_EOF) {
-      break;
-    } else if (response < 0) {
-      printf("Error while receiving frame from decoder: %s", av_err2str(response));
-      return response;
+static int open_output_file(StreamContext *dec_ctx, StreamContext *enc_ctx, StreamParams *sp) {
+    int ret = 0;
+    // 加载输入文件/流
+    if ((ret = load_output_file(enc_ctx->filename, &enc_ctx->avfmt_ctx)) < 0) {
+        av_log(NULL, AV_LOG_ERROR, "load output file failed!\n");
+        return ret;
     }
-
-    if (response >= 0) {
-      if (encode_audio(decoder, encoder, input_frame)) return -1;
-    }
-    av_frame_unref(input_frame);
-  }
-  return 0;
-}
-
-int transcode_video(StreamingContext *decoder, StreamingContext *encoder, AVPacket *input_packet, AVFrame *input_frame) {
-  int response = avcodec_send_packet(decoder->video_avcc, input_packet);
-  if (response < 0) {printf("Error while sending packet to decoder: %s", av_err2str(response)); return response;}
-
-  while (response >= 0) {
-    response = avcodec_receive_frame(decoder->video_avcc, input_frame);
-    if (response == AVERROR(EAGAIN) || response == AVERROR_EOF) {
-      break;
-    } else if (response < 0) {
-      printf("Error while receiving frame from decoder: %s", av_err2str(response));
-      return response;
-    }
-
-    if (response >= 0) {
-      if (encode_video(decoder, encoder, input_frame)) return -1;
-    }
-    av_frame_unref(input_frame);
-  }
-  return 0;
-}
-
-int main(int argc, char *argv[])
-{
-  /*
-   * H264 -> H265
-   * Audio -> remuxed (untouched)
-   * MP4 - MP4
-   */
-  // StreamingParams sp = {0};
-  // sp.copy_audio = 1;
-  // sp.copy_video = 0;
-  // sp.video_codec = "libx265";
-  // sp.codec_priv_key = "x265-params";
-  // sp.codec_priv_value = "keyint=60:min-keyint=60:scenecut=0";
-
-  /*
-   * H264 -> H264 (fixed gop)
-   * Audio -> remuxed (untouched)
-   * MP4 - MP4
-   */
-  StreamingParams sp = {0};
-  sp.copy_audio = 1;
-  sp.copy_video = 0;
-  sp.video_codec = "libx264";
-  // sp.codec_priv_key = "x264-params";
-  // sp.codec_priv_value = "keyint=60:min-keyint=60:scenecut=0:force-cfr=1";
-
-  /*
-   * H264 -> H264 (fixed gop)
-   * Audio -> remuxed (untouched)
-   * MP4 - fragmented MP4
-   */
-  //StreamingParams sp = {0};
-  //sp.copy_audio = 1;
-  //sp.copy_video = 0;
-  //sp.video_codec = "libx264";
-  //sp.codec_priv_key = "x264-params";
-  //sp.codec_priv_value = "keyint=60:min-keyint=60:scenecut=0:force-cfr=1";
-  //sp.muxer_opt_key = "movflags";
-  //sp.muxer_opt_value = "frag_keyframe+empty_moov+delay_moov+default_base_moof";
-
-  /*
-   * H264 -> H264 (fixed gop)
-   * Audio -> AAC
-   * MP4 - MPEG-TS
-   */
-  //StreamingParams sp = {0};
-  //sp.copy_audio = 0;
-  //sp.copy_video = 0;
-  //sp.video_codec = "libx264";
-  //sp.codec_priv_key = "x264-params";
-  //sp.codec_priv_value = "keyint=60:min-keyint=60:scenecut=0:force-cfr=1";
-  //sp.audio_codec = "aac";
-  //sp.output_extension = ".ts";
-
-  /*
-   * H264 -> VP9
-   * Audio -> Vorbis
-   * MP4 - WebM
-   */
-  //StreamingParams sp = {0};
-  //sp.copy_audio = 0;
-  //sp.copy_video = 0;
-  //sp.video_codec = "libvpx-vp9";
-  //sp.audio_codec = "libvorbis";
-  //sp.output_extension = ".webm";
-
-  StreamingContext *decoder = (StreamingContext*) calloc(1, sizeof(StreamingContext));
-  decoder->filename = argv[1];
-
-  StreamingContext *encoder = (StreamingContext*) calloc(1, sizeof(StreamingContext));
-  encoder->filename = argv[2];
-
-  if (sp.output_extension)
-    strcat(encoder->filename, sp.output_extension);
-
-  if (open_media(decoder->filename, &decoder->avfc)) return -1;
-  if (prepare_decoder(decoder)) return -1;
-
-  avformat_alloc_output_context2(&encoder->avfc, NULL, NULL, encoder->filename);
-  if (!encoder->avfc) {printf("could not allocate memory for output format");return -1;}
-
-  if (!sp.copy_video) {
-    AVRational input_framerate = av_guess_frame_rate(decoder->avfc, decoder->video_avs, NULL);
-    prepare_video_encoder(encoder, decoder->video_avcc, input_framerate, sp);
-  } else {
-    if (prepare_copy(encoder->avfc, &encoder->video_avs, decoder->video_avs->codecpar)) {return -1;}
-  }
-
-  if (!sp.copy_audio) {
-    if (prepare_audio_encoder(encoder, decoder->audio_avcc->sample_rate, sp)) {return -1;}
-  } else {
-    if (prepare_copy(encoder->avfc, &encoder->audio_avs, decoder->audio_avs->codecpar)) {return -1;}
-  }
-
-  if (encoder->avfc->oformat->flags & AVFMT_GLOBALHEADER)
-    encoder->avfc->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
-
-  if (!(encoder->avfc->oformat->flags & AVFMT_NOFILE)) {
-    if (avio_open(&encoder->avfc->pb, encoder->filename, AVIO_FLAG_WRITE) < 0) {
-      printf("could not open the output file");
-      return -1;
-    }
-  }
-
-  AVDictionary* muxer_opts = NULL;
-
-  if (sp.muxer_opt_key && sp.muxer_opt_value) {
-    av_dict_set(&muxer_opts, sp.muxer_opt_key, sp.muxer_opt_value, 0);
-  }
-
-  if (avformat_write_header(encoder->avfc, &muxer_opts) < 0) {printf("an error occurred when opening output file"); return -1;}
-
-  AVFrame *input_frame = av_frame_alloc();
-  if (!input_frame) {printf("failed to allocated memory for AVFrame"); return -1;}
-
-  AVPacket *input_packet = av_packet_alloc();
-  if (!input_packet) {printf("failed to allocated memory for AVPacket"); return -1;}
-
-  while (av_read_frame(decoder->avfc, input_packet) >= 0)
-  {
-    if (decoder->avfc->streams[input_packet->stream_index]->codecpar->codec_type == AVMEDIA_TYPE_VIDEO) {
-      if (!sp.copy_video) {
-        // TODO: refactor to be generic for audio and video (receiving a function pointer to the differences)
-        if (transcode_video(decoder, encoder, input_packet, input_frame)) return -1;
-        av_packet_unref(input_packet);
-      } else {
-        if (remux(&input_packet, &encoder->avfc, decoder->video_avs->time_base, encoder->video_avs->time_base)) return -1;
-      }
-    } else if (decoder->avfc->streams[input_packet->stream_index]->codecpar->codec_type == AVMEDIA_TYPE_AUDIO)  {
-      if (!sp.copy_audio) {
-        if (transcode_audio(decoder, encoder, input_packet, input_frame)) return -1;
-        av_packet_unref(input_packet);
-      } else {
-        if (remux(&input_packet, &encoder->avfc, decoder->audio_avs->time_base, encoder->audio_avs->time_base)) return -1;
-      }
+    
+    // 加载视频编码器
+    if (!sp->copy_video) {
+        if ((ret = load_video_encoder(dec_ctx, enc_ctx, sp)) < 0) {
+            av_log(NULL, AV_LOG_ERROR, "load output video coder failed!\n");
+            return ret;
+        }
     } else {
-      printf("ignoring all non video or audio packets");
+        if (reload_params(enc_ctx->avfmt_ctx, &enc_ctx->vstream, dec_ctx->vstream->codecpar) < 0 ) {
+            av_log(NULL, AV_LOG_ERROR, "prepare copy failed!\n");
+            return -1;
+        }
     }
-  }
-  // TODO: should I also flush the audio encoder?
-  if (encode_video(decoder, encoder, NULL)) return -1;
+    
+    // 加载音频编码器
+    if (!sp->copy_audio) {
+        if ((ret = load_audio_encoder(enc_ctx, dec_ctx->acodec_ctx->sample_rate, sp)) < 0) {
+            av_log(NULL, AV_LOG_ERROR, "load output audio coder failed!\n");
+            return ret;
+        }
+    } else {
+        if (reload_params(enc_ctx->avfmt_ctx, &enc_ctx->astream, dec_ctx->astream->codecpar) < 0) {
+            av_log(NULL, AV_LOG_ERROR, "prepare copy failed!\n");
+            return -1;
+        }
+    } 
+    
+    if (enc_ctx->avfmt_ctx->oformat->flags & AVFMT_GLOBALHEADER) {
+        enc_ctx->avfmt_ctx->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
+    }
 
-  av_write_trailer(encoder->avfc);
+    av_dump_format(enc_ctx->avfmt_ctx, 0, enc_ctx->filename, 1);
 
-  if (muxer_opts != NULL) {
-    av_dict_free(&muxer_opts);
-    muxer_opts = NULL;
-  }
+    if (!(enc_ctx->avfmt_ctx->oformat->flags & AVFMT_NOFILE)) {
+        ret = avio_open(&enc_ctx->avfmt_ctx->pb, enc_ctx->filename, AVIO_FLAG_WRITE);
+        if (ret < 0) {
+            av_log(NULL, AV_LOG_ERROR, "Could not open output file '%s'\n", enc_ctx->filename);
+            return ret;
+        }
+    }
 
-  if (input_frame != NULL) {
-    av_frame_free(&input_frame);
-    input_frame = NULL;
-  }
+    /* set muxer opts */
+    AVDictionary* muxer_opts = NULL;
+    // av_dict_set(&muxer_opts, sp.muxer_opt_key, sp.muxer_opt_value, 0);
 
-  if (input_packet != NULL) {
-    av_packet_free(&input_packet);
-    input_packet = NULL;
-  }
+    /* init muxer, write output file header */
+    ret = avformat_write_header(enc_ctx->avfmt_ctx, &muxer_opts);
+    if (ret < 0) {
+        av_log(NULL, AV_LOG_ERROR, "Error occurred when opening output file\n");
+        return ret;
+    }
+    return ret;
+}
 
-  avformat_close_input(&decoder->avfc);
+static int encode_video(StreamContext *dec_ctx, StreamContext *enc_ctx, AVFrame *input_frame) {
+    if (input_frame) {
+        input_frame->pict_type = AV_PICTURE_TYPE_NONE;
+    }
 
-  avformat_free_context(decoder->avfc); decoder->avfc = NULL;
-  avformat_free_context(encoder->avfc); encoder->avfc = NULL;
+    AVPacket *output_packet = av_packet_alloc();
+    if (!output_packet) {
+        av_log(NULL, AV_LOG_ERROR, "could not allocate memory for output packet\n");
+        return -1;
+    }
 
-  avcodec_free_context(&decoder->video_avcc); decoder->video_avcc = NULL;
-  avcodec_free_context(&decoder->audio_avcc); decoder->audio_avcc = NULL;
+    int ret = avcodec_send_frame(enc_ctx->vcodec_ctx, input_frame);
+    while (ret >= 0) {
+        ret = avcodec_receive_packet(enc_ctx->vcodec_ctx, output_packet);
+        if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF) {
+            break;
+        } else if (ret < 0) {
+            av_log(NULL, AV_LOG_ERROR, "Error while receiving packet from encoder\n");
+            return -1;
+        }
 
-  free(decoder); decoder = NULL;
-  free(encoder); encoder = NULL;
-  return 0;
+        output_packet->stream_index = dec_ctx->vindex;
+        output_packet->duration = enc_ctx->vstream->time_base.den / enc_ctx->vstream->time_base.num / dec_ctx->vstream->avg_frame_rate.num * dec_ctx->vstream->avg_frame_rate.den;
+
+        av_packet_rescale_ts(output_packet, dec_ctx->vstream->time_base, enc_ctx->vstream->time_base);
+        ret = av_interleaved_write_frame(enc_ctx->avfmt_ctx, output_packet);
+        if (ret != 0) { 
+            av_log(NULL, AV_LOG_ERROR, "Error %d while receiving packet from decoder: %s\n", ret, av_err2str(ret));
+            return -1;
+        }
+    }
+    av_packet_unref(output_packet);
+    av_packet_free(&output_packet);
+    return 0;
+}
+
+static int transcode_video(StreamContext *dec_ctx, StreamContext *enc_ctx, AVPacket *input_packet, AVFrame *input_frame) {
+    int ret = avcodec_send_packet(dec_ctx->vcodec_ctx, input_packet);
+    if (ret < 0) {
+        av_log(NULL, AV_LOG_ERROR, "Error while sending packet to decoder\n"); 
+        return ret;
+    }
+
+    while (ret >= 0) {
+        ret = avcodec_receive_frame(dec_ctx->vcodec_ctx, input_frame);
+        if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF) {
+            break;
+        } else if (ret < 0) {
+            av_log(NULL, AV_LOG_ERROR, "Error while receiving frame from decoder\n");
+            return ret;
+        }
+        if (ret >= 0) {
+            if (encode_video(dec_ctx, enc_ctx, input_frame)) {
+                return -1;
+            }
+        }
+        av_frame_unref(input_frame);
+    }
+    return 0;
+}
+
+int encode_audio(StreamContext *dec_ctx, StreamContext *enc_ctx, AVFrame *input_frame) {
+    AVPacket *output_packet = av_packet_alloc();
+    if (!output_packet) {
+        av_log(NULL, AV_LOG_ERROR, "could not allocate memory for output packet\n");
+        return -1;
+    }
+
+    int ret = avcodec_send_frame(enc_ctx->acodec_ctx, input_frame);
+    while (ret >= 0) {
+        ret = avcodec_receive_packet(enc_ctx->acodec_ctx, output_packet);
+        if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF) {
+            break;
+        } else if (ret < 0) {
+            av_log(NULL, AV_LOG_ERROR, "Error while receiving packet from encoder: %s\n", av_err2str(ret));
+            return -1;
+        }
+
+        output_packet->stream_index = dec_ctx->aindex;
+        av_packet_rescale_ts(output_packet, dec_ctx->astream->time_base, enc_ctx->astream->time_base);
+        ret = av_interleaved_write_frame(enc_ctx->avfmt_ctx, output_packet);
+        if (ret != 0) {
+            av_log(NULL, AV_LOG_ERROR, "Error %d while receiving packet from decoder: %s\n", ret, av_err2str(ret)); 
+            return -1;
+        }
+    }
+    av_packet_unref(output_packet);
+    av_packet_free(&output_packet);
+    return 0;
+}
+
+static int transcode_audio(StreamContext *dec_ctx, StreamContext *enc_ctx, AVPacket *input_packet, AVFrame *input_frame) {
+    int ret = avcodec_send_packet(dec_ctx->acodec_ctx, input_packet);
+    if (ret < 0) {
+        av_log(NULL, AV_LOG_ERROR, "Error while sending packet to decoder: %s\n", av_err2str(ret)); 
+        return ret;
+    }
+
+    while (ret >= 0) {
+        ret = avcodec_receive_frame(dec_ctx->acodec_ctx, input_frame);
+        if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF) {
+            break;
+        } else if (ret < 0) {
+            av_log(NULL, AV_LOG_ERROR, "Error while receiving frame from decoder: %s\n", av_err2str(ret));
+            return ret;
+        }
+
+        if (ret >= 0) {
+            if (encode_audio(dec_ctx, enc_ctx, input_frame)) {
+                return -1;
+            }
+        }
+        av_frame_unref(input_frame);
+    }
+    return 0;
+}
+
+static int remux(AVPacket *pkt, AVFormatContext *avfc, AVRational dec_tb, AVRational enc_tb) {
+    av_packet_rescale_ts(pkt, dec_tb, enc_tb);
+    pkt->pos = -1;
+    if (av_interleaved_write_frame(avfc, pkt) < 0) {
+        av_log(NULL, AV_LOG_ERROR, "error while copying stream packet\n"); 
+        return -1; 
+    }
+    return 0;
+}
+
+static int transcode(StreamContext *dec_ctx, StreamContext *enc_ctx, StreamParams *sp) {
+    /* init input frame */
+    AVFrame *input_frame = av_frame_alloc();
+    if (!input_frame) {
+        av_log(NULL, AV_LOG_ERROR, "failed to allocated memory for AVFrame\n"); 
+        return -1;
+    }
+    
+    /* init input packet */
+    AVPacket *input_packet = av_packet_alloc();
+    if (!input_packet) {
+        av_log(NULL, AV_LOG_ERROR, "failed to allocated memory for AVPacket\n");
+        return -1;
+    }
+    
+    while (av_read_frame(dec_ctx->avfmt_ctx, input_packet) >= 0) {
+        if (dec_ctx->avfmt_ctx->streams[input_packet->stream_index]->codecpar->codec_type == AVMEDIA_TYPE_VIDEO) {
+            if (!sp->copy_video) {
+                if (transcode_video(dec_ctx, enc_ctx, input_packet, input_frame)) {
+                    return -1;
+                }
+                av_packet_unref(input_packet);
+            } else {
+                if (avcodec_parameters_copy(enc_ctx->vstream->codecpar, dec_ctx->vstream->codecpar) < 0) {
+                    av_log(NULL, AV_LOG_ERROR, "Failed to copy codec parameters\n");
+                }
+                if (remux(input_packet, enc_ctx->avfmt_ctx, dec_ctx->astream->time_base, enc_ctx->astream->time_base) < 0) {
+                    return -1;
+                }
+            }
+        } else if (dec_ctx->avfmt_ctx->streams[input_packet->stream_index]->codecpar->codec_type == AVMEDIA_TYPE_AUDIO)  {
+            if (!sp->copy_audio) {
+                if (transcode_audio(dec_ctx, enc_ctx, input_packet, input_frame)) {
+                    return -1;
+                }
+                av_packet_unref(input_packet);
+            } else {
+                if (avcodec_parameters_copy(enc_ctx->astream->codecpar, dec_ctx->astream->codecpar) < 0) {
+                    av_log(NULL, AV_LOG_ERROR, "Failed to copy codec parameters\n");
+                }
+                if (remux(input_packet, enc_ctx->avfmt_ctx, dec_ctx->astream->time_base, enc_ctx->astream->time_base) < 0) {
+                    return -1;
+                }
+            }
+        } else {
+            av_log(NULL, AV_LOG_ERROR, "ignoring all non video or audio packets\n");
+        }
+    }
+
+    // flush encoder
+    // if (encode_video(dec_ctx, enc_ctx, NULL)) {
+    //     return -1;
+    // }
+
+    av_write_trailer(enc_ctx->avfmt_ctx);
+    
+    if (input_frame != NULL) {
+        av_frame_free(&input_frame);
+        input_frame = NULL;
+    }
+
+    if (input_packet != NULL) {
+        av_packet_free(&input_packet);
+        input_packet = NULL;
+    }
+    return 0;
+}
+
+int main(int argc, char *argv[]) {
+    // 检查输入输出
+    if (argc != 3) {
+        av_log(NULL, AV_LOG_ERROR, "Usage: %s <input file> <output file>\n", argv[0]);
+        return 0;
+    }
+    int ret = 0;
+    StreamContext *dec_ctx = (StreamContext *)calloc(1, sizeof(StreamContext));
+    dec_ctx->filename = argv[1];
+
+    StreamContext *enc_ctx = (StreamContext *)calloc(1, sizeof(StreamContext));
+    enc_ctx->filename = argv[2];
+             
+    // 设置编码参数
+    StreamParams sp = {0};
+    sp.copy_audio = 1;
+    sp.copy_video = 1;
+    sp.video_codec = "libx264";
+    sp.audio_codec = "aac";
+
+    // 加载输入文件/流
+    if ((ret = open_input_file(dec_ctx)) < 0) {
+        av_log(NULL, AV_LOG_ERROR, "open input file failed!\n");
+        return ret;
+    }
+
+    // 打开输出文件/流
+    if ((ret = open_output_file(dec_ctx, enc_ctx, &sp)) < 0) {
+        av_log(NULL, AV_LOG_ERROR, "open output file failed!\n");
+        return ret;
+    }
+
+    // 初始化filter
+    // if ((ret = init_filters()) < 0) {
+    //     return ret;
+    // }
+
+    // 进行编码
+    if ((ret = transcode(dec_ctx, enc_ctx, &sp)) < 0) {
+        av_log(NULL, AV_LOG_ERROR, "transcode failed!\n");
+        return ret;
+    }
+
+    avformat_close_input(&dec_ctx->avfmt_ctx);
+
+    avformat_free_context(dec_ctx->avfmt_ctx); dec_ctx->avfmt_ctx = NULL;
+    avformat_free_context(enc_ctx->avfmt_ctx); enc_ctx->avfmt_ctx = NULL;
+
+    avcodec_free_context(&dec_ctx->vcodec_ctx); dec_ctx->vcodec_ctx = NULL;
+    avcodec_free_context(&dec_ctx->acodec_ctx); dec_ctx->acodec_ctx = NULL;
+
+    free(dec_ctx); dec_ctx = NULL;
+    free(enc_ctx); enc_ctx = NULL;
+    return ret;
 }
