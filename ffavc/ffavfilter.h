@@ -33,7 +33,7 @@
 #ifndef _FFAVFILTER_H
 #define _FFAVFILTER_H
 
-#include <iostream>
+#include <stdio.h>
 
 #include "libavfilter/avfilter.h"
 #include "libavfilter/buffersink.h"

@@ -33,7 +33,7 @@
 #ifndef _FFCMDUTIL_H
 #define _FFCMDUTIL_H
 
-#include <iostream>
+#include <stdio.h>
 
 /**
  * 调用server端对象方法

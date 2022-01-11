@@ -33,7 +33,7 @@
 #ifndef _FFAVHW_H
 #define _FFAVHW_H
 
-#include <iostream>
+#include <stdio.h>
 
 /**
  * 调用server端对象方法

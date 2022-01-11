@@ -33,7 +33,7 @@
 #ifndef _FFAVOPT_H
 #define _FFAVOPT_H
 
-#include <iostream>
+#include <stdio.h>
 
 /**
  * 调用server端对象方法
