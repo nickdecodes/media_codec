@@ -1,4 +1,6 @@
+CC = gcc
 CXX = g++
+CFLAGS = -std=c99 -Wall -g
 CXXFLAGS = -std=c++11 -Wall -g
 THIRDPATH = ./libav
 INCLUDE = 

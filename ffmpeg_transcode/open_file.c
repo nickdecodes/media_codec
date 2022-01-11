@@ -50,8 +50,7 @@ int open_input_file(const char *filename, inout_ctx_t *ictx) {
         }
         /* Reencode video & audio and remux subtitles etc. */
         // 音频流视频流需要重新编码，字幕流只需要重新封装
-        if (codec_ctx->codec_type == AVMEDIA_TYPE_VIDEO
-                || codec_ctx->codec_type == AVMEDIA_TYPE_AUDIO) {
+        if (codec_ctx->codec_type == AVMEDIA_TYPE_VIDEO || codec_ctx->codec_type == AVMEDIA_TYPE_AUDIO) {
             if (codec_ctx->codec_type == AVMEDIA_TYPE_VIDEO)
                 codec_ctx->framerate = av_guess_frame_rate(ifmt_ctx, stream, NULL);
             /* Open decoder */
@@ -116,8 +115,7 @@ int open_output_file(const char *filename, const inout_ctx_t *ictx,
         AVCodecContext *dec_ctx = ictx->codec_ctx[i];
 
         // 3. 构建AVCodecContext
-        if (dec_ctx->codec_type == AVMEDIA_TYPE_VIDEO ||
-            dec_ctx->codec_type == AVMEDIA_TYPE_AUDIO) {         // 音频流或视频流
+        if (dec_ctx->codec_type == AVMEDIA_TYPE_VIDEO || dec_ctx->codec_type == AVMEDIA_TYPE_AUDIO) {         // 音频流或视频流
             // 3.1 查找编码器AVCodec，本例使用与解码器相同的编码器
             AVCodec *encoder = NULL;
             if ((dec_ctx->codec_type == AVMEDIA_TYPE_VIDEO) && (strcmp(v_enc_name, "copy") != 0)) {

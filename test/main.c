@@ -144,7 +144,7 @@ static int load_video_encoder(StreamContext *dec_ctx, StreamContext *enc_ctx, St
     
     // 设置参数
     // av_opt_set(enc_ctx->vcodec_ctx->priv_data, "preset", "veryfast", 0);
-    av_opt_copy(enc_ctx->vcodec_ctx->priv_data, dec_ctx->vcodec_ctx->priv_data);
+    // av_opt_copy(enc_ctx->vcodec_ctx->priv_data, dec_ctx->vcodec_ctx->priv_data);
     enc_ctx->vcodec_ctx->height = dec_ctx->vcodec_ctx->height;
     enc_ctx->vcodec_ctx->width = dec_ctx->vcodec_ctx->width;
     enc_ctx->vcodec_ctx->sample_aspect_ratio = dec_ctx->vcodec_ctx->sample_aspect_ratio;
@@ -153,12 +153,13 @@ static int load_video_encoder(StreamContext *dec_ctx, StreamContext *enc_ctx, St
     } else {
         enc_ctx->vcodec_ctx->pix_fmt = dec_ctx->vcodec_ctx->pix_fmt;
     }
-    printf("%lld\n", dec_ctx->vcodec_ctx->bit_rate);
-    enc_ctx->vcodec_ctx->bit_rate = dec_ctx->vcodec_ctx->bit_rate;
-    enc_ctx->vcodec_ctx->rc_buffer_size = dec_ctx->vcodec_ctx->rc_buffer_size;
-    enc_ctx->vcodec_ctx->rc_max_rate = dec_ctx->vcodec_ctx->rc_max_rate;
-    enc_ctx->vcodec_ctx->rc_min_rate = dec_ctx->vcodec_ctx->rc_min_rate;
+    // printf("%lld\n", dec_ctx->vcodec_ctx->bit_rate);
+    // enc_ctx->vcodec_ctx->bit_rate = dec_ctx->vcodec_ctx->bit_rate;
+    // enc_ctx->vcodec_ctx->rc_buffer_size = dec_ctx->vcodec_ctx->rc_buffer_size;
+    // enc_ctx->vcodec_ctx->rc_max_rate = dec_ctx->vcodec_ctx->rc_max_rate;
+    // enc_ctx->vcodec_ctx->rc_min_rate = dec_ctx->vcodec_ctx->rc_min_rate;
     enc_ctx->vcodec_ctx->time_base = av_inv_q(input_framerate);
+    enc_ctx->vcodec_ctx->framerate = input_framerate;
     
     if (avcodec_open2(enc_ctx->vcodec_ctx, enc_ctx->vcodec, NULL) < 0) {
         av_log(NULL, AV_LOG_ERROR, "Could not open the codec!\n");
@@ -292,8 +293,7 @@ static int encode_video(StreamContext *dec_ctx, StreamContext *enc_ctx, AVFrame 
         }
 
         output_packet->stream_index = dec_ctx->vindex;
-        output_packet->duration = enc_ctx->vstream->time_base.den / enc_ctx->vstream->time_base.num / dec_ctx->vstream->avg_frame_rate.num * dec_ctx->vstream->avg_frame_rate.den;
-
+        output_packet->duration = enc_ctx->vstream->time_base.den / enc_ctx->vstream->time_base.num / (dec_ctx->vstream->avg_frame_rate.num / dec_ctx->vstream->avg_frame_rate.den);
         av_packet_rescale_ts(output_packet, enc_ctx->vstream->time_base, dec_ctx->vstream->time_base);
         ret = av_interleaved_write_frame(enc_ctx->avfmt_ctx, output_packet);
         if (ret != 0) { 
