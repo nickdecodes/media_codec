@@ -2,7 +2,7 @@ CC = gcc
 CXX = g++
 CFLAGS = -std=c99 -Wall -g
 CXXFLAGS = -std=c++11 -Wall -g
-THIRDPATH = ./libav
+THIRDPATH = ./lib
 INCLUDE = 
 # LIBS = -lavformat -lavcodec -lavutil -lswscale -lSDL2 -lavfilter
 LIBS = $(THIRDPATH)/libavcodec.a $(THIRDPATH)/libavdevice.a
@@ -13,8 +13,8 @@ OBJS = ffavcpp.o ffavfilter.o ffavhw.o ffavopt.o ffcmdutil.o
 
 .PHONY: clean
 
-ffavcpp : $(OBJS)
-	$(CC) $(CFLAGS) $(OBJS) $(LIBS) $(INCLUDE) -o ffavc
+ffavapi : $(OBJS)
+	$(CC) $(CFLAGS) $(OBJS) $(LIBS) $(INCLUDE) -o ffavapi
 
 ffavfilter.o : ffavfilter.cpp ffavfilter.h
 	$(CC) -c $(CFLAGS) ffavfilter.cpp
