@@ -29,4 +29,4 @@ ffcmdutil.o : ffcmdutil.cpp ffcmdutil.h
 	$(CC) -c $(CFLAGS) ffcmdutil.cpp
 
 clean:
-	rm -rf *.o ffavc
+	rm -rf *.o ffavapi
