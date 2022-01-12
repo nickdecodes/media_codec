@@ -33,7 +33,6 @@
 #ifndef _FFAVAPI_H
 #define _FFAVAPI_H
 
-#include <iostream>
 #include <stdint.h>
 #include <stdio.h>
 #include <signal.h>
