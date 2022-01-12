@@ -37,6 +37,8 @@
 #include <stdio.h>
 #include <signal.h>
 
+#include "ffcmdutil.h"
+
 
 /**
  * 调用server端对象方法

@@ -33,7 +33,30 @@
 #include "ffcmdutil.h"
 
 /**
- * 调用server端对象方法
- * @param req
- * @return int
+ * 生成一个函数指针用于自定义退出程序操作
+ * @param ret-退出标识
+ * @return void
  */
+static void (*program_exit)(int ret);
+
+/**
+ * 通过回调函数，注册一个退出处理程序
+ * @param cb-函数指针
+ * @return void
+ */
+void register_exit(void (*cb)(int ret)) {
+    program_exit = cb;
+}
+
+/**
+ * 退出程序
+ * @param ret-退出标识
+ * @return void
+ */
+void exit_program(int ret) {
+    if (program_exit) {
+        program_exit(ret);
+    }
+
+    exit(ret);
+}
