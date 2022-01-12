@@ -31,7 +31,6 @@
  */
 
 #include "ffavapi.h"
-using namespace std;
 
 /**
  * 命令行调用API主入口

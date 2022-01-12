@@ -31,7 +31,6 @@
  */
 
 #include "ffavapi.h"
-using namespace std;
 
 
 /**
