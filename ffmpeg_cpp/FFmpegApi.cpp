@@ -34,39 +34,28 @@
 
 /**
  * 命令行调用API主入口
- * @param argc-参数个数
- * @param argv-参数数组
+ * @param cmd_str-命令行参数
  * @return int
  */
-
-
-/**
- * 命令行调用API主入口
- * @param argc-参数个数
- * @param argv-参数数组
- * @return int
- * @ffmpeg [全局选项] [输入选项] -i [输入流几文件] [输出选项] -f [格式] [输出流及文件]
- */
-int main(int argc, char *argv[]) {
+int FFmpegApi::cmdApi(std::string cmd_str) {
     int ret = 0;
-    // 设置日志
-    LOG_SET_LEVEL(log::LogLevel::DEBUG | log::LogLevel::INFO);
-    LOG_SET_TARGET(log::LogLevel::FILES, "./tmp.log");
-    LOG_INFO << "input params: " << argv[1];
-    // 分析参数选项
-    FFmpegOpt ffmpegOpt;
-    ret = ffmpegOpt.parseOptions(argc, argv);
-    if (ret < 0) {
-        return ret;
-    }
+    // LOG_SET_TARGET(log::LogLevel::FILES, "./tmp.log");
+    // LOG_SET_LEVEL(log::LogLevel::DEBUG | log::LogLevel::INFO);
 
-    // 打开输入文件
+    // // 分析参数
+    // LOG_DEBUG << "分析参数 " << cmd_str;
 
-    // 打开输出文件
+    // // 打开输入文件
+    // LOG_DEBUG << "打开输入文件";
 
-    // 初始化过滤器
+    // // 打开输出文件
+    // LOG_DEBUG << "打开输出文件";
 
-    // 进行编码
+    // // 初始化过滤器
+    // LOG_DEBUG << "初始化过滤器";
+
+    // // 进行编码
+    // LOG_DEBUG << "进行编码";
 
     return ret;
 }

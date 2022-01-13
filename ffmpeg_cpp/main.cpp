@@ -30,40 +30,35 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _FFMPEGAPI_H
-#define _FFMPEGAPI_H
-
 #include <iostream>
-#include <stdint.h>
-#include <stdio.h>
-#include <signal.h>
-
-// #include "Logger.h"
-#include "FFmpegOpt.h"
-#include "FFmpegUtil.h"
-#include "FFmpegFilter.h"
-
+#include "FFmpegApi.h"
 
 /**
- * 调用server端对象方法
- * @param req
+ * 命令行调用API主入口
+ * @param argc-参数个数
+ * @param argv-参数数组
  * @return int
+ * @ffmpeg [全局选项] [输入选项] -i [输入流几文件] [输出选项] -f [格式] [输出流及文件]
  */
+int main(int argc, char *argv[]) {
+    int ret = 0;
+    // 分析参数选项
+    FFmpegOpt ffmpegOpt;
+    ret = ffmpegOpt.parseOptions(argc, argv);
+    if (ret < 0) {
+        return ret;
+    }
 
-class FFmpegApi {
-public:
-    FFmpegApi() {}
-    ~FFmpegApi() {}
+    FFmpegApi ffmpegApi;
+    ffmpegApi.cmdApi("hello");
 
-    /**
-     * 命令行调用API主入口
-     * @param cmd_str-命令行参数
-     * @return int
-     */
-    int cmdApi(std::string cmd_str);
+    // 打开输入文件
 
-private:
+    // 打开输出文件
 
-};
+    // 初始化过滤器
 
-#endif
+    // 进行编码
+
+    return ret;
+}

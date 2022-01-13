@@ -40,13 +40,13 @@
 #include <ctime>
 #include <map>
 
-#define LOG_TRACE(level) log::logger(__FILE__, __func__, __LINE__, level)
-#define LOG_INFO LOG_TRACE(log::LogLevel::INFO)
-#define LOG_DEBUG LOG_TRACE(log::LogLevel::DEBUG)
-#define LOG_WARNING LOG_TRACE(log::LogLevel::WARNING)
-#define LOG_ERROR LOG_TRACE(log::LogLevel::ERROR)
-#define LOG_SET_LEVEL(level) log::Logger::set_level(level)
-#define LOG_SET_TARGET(target, path) log::Logger::set_target(target, path)
+// #define LOG_TRACE(level) log::logger(__FILE__, __func__, __LINE__, level)
+// #define LOG_INFO LOG_TRACE(log::LogLevel::INFO)
+// #define LOG_DEBUG LOG_TRACE(log::LogLevel::DEBUG)
+// #define LOG_WARNING LOG_TRACE(log::LogLevel::WARNING)
+// #define LOG_ERROR LOG_TRACE(log::LogLevel::ERROR)
+// #define LOG_SET_LEVEL(level) log::Logger::set_level(level)
+// #define LOG_SET_TARGET(target, path) log::Logger::set_target(target, path)
 
 namespace log {
 
@@ -142,10 +142,10 @@ private:
     static const char *_path;
 };
 
-int Logger::_level = 15;
-int Logger::_target = 15;
-const char *Logger::_path = "./";
-Logger logger;
+// int Logger::_level = 15;
+// int Logger::_target = 15;
+// const char *Logger::_path = "./";
+// Logger logger;
 
 }
 
