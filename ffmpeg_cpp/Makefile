@@ -3,7 +3,7 @@ CXX = g++
 CFLAGS = -std=c99 -Wall -g
 CXXFLAGS = -std=c++11 -Wall -g
 THIRDPATH = ./lib
-INCLUDE = 
+INCLUDE = -I Logger.h
 # LIBS = -lavformat -lavcodec -lavutil -lswscale -lSDL2 -lavfilter
 LIBS = $(THIRDPATH)/libavcodec.a $(THIRDPATH)/libavdevice.a
 LIBS += $(THIRDPATH)/libavfilter.a $(THIRDPATH)/libavformat.a

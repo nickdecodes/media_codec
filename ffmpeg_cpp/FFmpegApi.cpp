@@ -50,9 +50,9 @@
 int main(int argc, char *argv[]) {
     int ret = 0;
     // 设置日志
-    LOG_SET_LEVEL(log::LogLevel::DEBUG);
+    LOG_SET_LEVEL(log::LogLevel::DEBUG | log::LogLevel::INFO);
     LOG_SET_TARGET(log::LogLevel::FILES, "./tmp.log");
-    LOG_DEBUG << argv[1];
+    LOG_INFO << "input params: " << argv[1];
     // 分析参数选项
     FFmpegOpt ffmpegOpt;
     ret = ffmpegOpt.parseOptions(argc, argv);

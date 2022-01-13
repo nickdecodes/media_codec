@@ -88,7 +88,7 @@ class Logger {
             now << "[" << func << "] ";
             now << "[" << log_time() << "] ";
             now << "[" << LogLevels[level] << "] ";
-            now << "(" << line << ") :";
+            now << "(" << line << ") ";
             _flag = Logger::_level & level;
         }
         LoggerStream(const LoggerStream &ls) : _obj(ls._obj) {}
