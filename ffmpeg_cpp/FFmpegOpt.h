@@ -45,18 +45,59 @@
 
 class FFmpegOpt {
 public:
-    FFmpegOpt() {}
-    ~FFmpegOpt() {}
+    /**
+     * 构造
+     */
+    FFmpegOpt(std::string cmd_str);
+    /**
+     * 析构
+     */
+    virtual ~FFmpegOpt();
+
     /**
      * 分析参数选项
-     * @param argc-参数个数
-     * @param argv-参数数组
+     * @param 
      * @return int
      */
-    int parseOptions(int argc, char *argv[]);
+    int parseOption();
+
+    /**
+     * 获取全局参数选项
+     * @param 
+     * @return int
+     */
+    int getGlobalOption();
+
+    /**
+     * 获取全局参数选项
+     * @param 
+     * @return int
+     */
+    int getInputOption();
+
+    /**
+     * 获取全局参数选项
+     * @param 
+     * @return int
+     */
+    int getInputStreamOption();
+
+    /**
+     * 获取全局参数选项
+     * @param 
+     * @return int
+     */
+    int getOutputOption();
+
+    /**
+     * 获取全局参数选项
+     * @param 
+     * @return int
+     */
+    int getOutputStreamOption();
 
 private:
-
+    std::string _cmd_str;
 };
 
 #endif

@@ -33,8 +33,16 @@
 #include "FFmpegFilter.h"
 
 /**
- * 调用server端对象方法
- * @param req
- * @return int
+ * 构造
  */
+FFmpegFilter::FFmpegFilter() {
+
+}
+
+/**
+ * 析构
+ */
+FFmpegFilter::~FFmpegFilter() {
+
+}
 

@@ -39,8 +39,14 @@
 
 class FFmpegUtil {
 public:
-    FFmpegUtil() {}
-    ~FFmpegUtil() {}
+    /**
+     * 构造
+     */
+    FFmpegUtil();
+    /**
+     * 析构
+     */
+    virtual ~FFmpegUtil();
 
     /**
      * 打开文件
@@ -62,6 +68,14 @@ public:
      * @return int
      */
     int openOutputFile();
+
+    /**
+     * 编码
+     * @param req
+     * @return int
+     */
+    int transcode();
+
 
 private:
 

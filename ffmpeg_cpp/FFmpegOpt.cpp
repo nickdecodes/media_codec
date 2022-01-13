@@ -33,10 +33,35 @@
 #include "FFmpegOpt.h"
 
 /**
+ * 构造
+ */
+FFmpegOpt::FFmpegOpt(std::string cmd_str) : _cmd_str(cmd_str) {
+    std::cout << this->_cmd_str << std::endl;
+}
+
+/**
+ * 析构
+ */
+FFmpegOpt::~FFmpegOpt() {
+
+}
+
+/**
  * 分析参数选项
  * @param 
  * @return int
  */
-int FFmpegOpt::parseOptions(int argc, char *argv[]) {
+int FFmpegOpt::parseOption() {
+
+    return 0;
+}
+
+/**
+ * 获取参数选项
+ * @param 
+ * @return int
+ */
+int FFmpegOpt::getGlobalOption() {
+
     return 0;
 }

@@ -33,7 +33,51 @@
 #include "FFmpegUtil.h"
 
 /**
- * 调用server端对象方法
- * @param req
+ * 构造
+ */
+FFmpegUtil::FFmpegUtil() {
+
+}
+
+/**
+ * 析构
+ */
+FFmpegUtil::~FFmpegUtil() {
+
+}
+
+/**
+ * 打开文件
+ * @param
  * @return int
  */
+int FFmpegUtil::openFile() {
+    return 0;
+}
+
+/**
+ * 打开文件
+ * @param
+ * @return int
+ */
+int FFmpegUtil::openInputFile() {
+    return 0;
+}
+
+/**
+ * 打开文件
+ * @param
+ * @return int
+ */
+int FFmpegUtil::openOutputFile() {
+    return 0;
+}
+
+/**
+ * 编码
+ * @param
+ * @return int
+ */
+int FFmpegUtil::transcode() {
+    return 0;
+}

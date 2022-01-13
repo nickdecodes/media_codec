@@ -33,29 +33,43 @@
 #include "FFmpegApi.h"
 
 /**
+ * 构造
+ */
+FFmpegApi::FFmpegApi() {
+
+}
+
+/**
+ * 析构
+ */
+FFmpegApi::~FFmpegApi() {
+    
+}
+
+/**
  * 命令行调用API主入口
  * @param cmd_str-命令行参数
  * @return int
  */
 int FFmpegApi::cmdApi(std::string cmd_str) {
     int ret = 0;
-    // LOG_SET_TARGET(log::LogLevel::FILES, "./tmp.log");
-    // LOG_SET_LEVEL(log::LogLevel::DEBUG | log::LogLevel::INFO);
 
-    // // 分析参数
-    // LOG_DEBUG << "分析参数 " << cmd_str;
+    // 分析参数
+    std::cout << "分析参数 " << cmd_str << std::endl;
+    FFmpegOpt ffmpegOpt(cmd_str);
+    ffmpegOpt.parseOption();
 
-    // // 打开输入文件
-    // LOG_DEBUG << "打开输入文件";
+    // 打开输入文件
+    std::cout << "打开输入文件" << std::endl;
 
-    // // 打开输出文件
-    // LOG_DEBUG << "打开输出文件";
+    // 打开输出文件
+    std::cout << "打开输出文件" << std::endl;
 
-    // // 初始化过滤器
-    // LOG_DEBUG << "初始化过滤器";
+    // 初始化过滤器
+    std::cout << "初始化过滤器" << std::endl;
 
-    // // 进行编码
-    // LOG_DEBUG << "进行编码";
+    // 进行编码
+    std::cout << "进行编码" << std::endl;
 
     return ret;
 }

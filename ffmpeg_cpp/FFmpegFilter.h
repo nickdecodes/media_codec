@@ -42,4 +42,21 @@
  * @param req
  * @return int
  */
+
+class FFmpegFilter {
+public:
+    /**
+     * 构造
+     */
+    FFmpegFilter();
+    /**
+     * 析构
+     */
+    virtual ~FFmpegFilter();
+
+
+private:
+    
+};
+
 #endif

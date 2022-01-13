@@ -30,6 +30,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <sstream>
 #include <iostream>
 #include "FFmpegApi.h"
 
@@ -38,27 +39,26 @@
  * @param argc-参数个数
  * @param argv-参数数组
  * @return int
- * @ffmpeg [全局选项] [输入选项] -i [输入流几文件] [输出选项] -f [格式] [输出流及文件]
+ * @ffmpeg [全局选项] [输入选项] -i [输入流及文件] [输出选项] -f [格式] [输出流及文件]
  */
 int main(int argc, char *argv[]) {
     int ret = 0;
-    // 分析参数选项
-    FFmpegOpt ffmpegOpt;
-    ret = ffmpegOpt.parseOptions(argc, argv);
-    if (ret < 0) {
-        return ret;
+    std::string cmd_str;
+    std::ostringstream oss;
+    for (int i = 1; i < argc; i++) {
+        if (i == 1) {
+            oss << argv[i];
+        } else {
+            oss << " " << argv[i];
+        }
     }
-
+    cmd_str = oss.str();
+    std::cout << oss.str() << std::endl;
     FFmpegApi ffmpegApi;
-    ffmpegApi.cmdApi("hello");
-
-    // 打开输入文件
-
-    // 打开输出文件
-
-    // 初始化过滤器
-
-    // 进行编码
+    ret = ffmpegApi.cmdApi(cmd_str);
+    if (ret < 0) {
+        std::cout << "exec cmdApi failed" << std::endl;
+    }
 
     return ret;
 }

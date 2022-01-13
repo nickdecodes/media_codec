@@ -52,8 +52,14 @@
 
 class FFmpegApi {
 public:
-    FFmpegApi() {}
-    ~FFmpegApi() {}
+    /**
+     * 构造
+     */
+    FFmpegApi();
+    /**
+     * 析构
+     */
+    virtual ~FFmpegApi();
 
     /**
      * 命令行调用API主入口
