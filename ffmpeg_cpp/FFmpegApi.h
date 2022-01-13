@@ -30,10 +30,18 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _FFAVFILTER_H
-#define _FFAVFILTER_H
+#ifndef _FFMPEGAPI_H
+#define _FFMPEGAPI_H
 
 #include <iostream>
+#include <stdint.h>
+#include <stdio.h>
+#include <signal.h>
+
+#include "Logger.h"
+#include "FFmpegOpt.h"
+#include "FFmpegUtil.h"
+#include "FFmpegFilter.h"
 
 
 /**

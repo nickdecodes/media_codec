@@ -30,14 +30,13 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _FFCMDUTIL_H
-#define _FFCMDUTIL_H
-
-#include <iostream>
+#include "FFmpegOpt.h"
 
 /**
- * 调用server端对象方法
- * @param req
+ * 分析参数选项
+ * @param 
  * @return int
  */
-#endif
+int FFmpegOpt::parseOptions(int argc, char *argv[]) {
+    return 0;
+}

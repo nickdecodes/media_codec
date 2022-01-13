@@ -30,22 +30,39 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "ffavapi.h"
+#ifndef _FFMPEGUTIL_H
+#define _FFMPEGUTIL_H
 
-/**
- * 命令行调用API主入口
- * @param argc-参数个数
- * @param argv-参数数组
- * @return int
- */
+#include <iostream>
 
+class FFmpegUtil {
+public:
+    FFmpegUtil() {}
+    ~FFmpegUtil() {}
 
-/**
- * 命令行调用API主入口
- * @param argc-参数个数
- * @param argv-参数数组
- * @return int
- */
-int main(int argc, char *argv[]) {
-    return 0;
-}
+    /**
+     * 打开文件
+     * @param req
+     * @return int
+     */
+    int openFile();
+
+    /**
+     * 打开文件
+     * @param req
+     * @return int
+     */
+    int openInputFile();
+
+    /**
+     * 打开文件
+     * @param req
+     * @return int
+     */
+    int openOutputFile();
+
+private:
+
+};
+
+#endif

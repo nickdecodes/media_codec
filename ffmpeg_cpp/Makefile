@@ -9,24 +9,24 @@ LIBS = $(THIRDPATH)/libavcodec.a $(THIRDPATH)/libavdevice.a
 LIBS += $(THIRDPATH)/libavfilter.a $(THIRDPATH)/libavformat.a
 LIBS += $(THIRDPATH)/libavutil.a $(THIRDPATH)/libswresample.a
 LIBS += $(THIRDPATH)/libswscale.a
-OBJS = ffavapi.o ffavfilter.o ffavhw.o ffavopt.o ffcmdutil.o 
+OBJS = FFmpegApi.o FFmpegFilter.o ffavhw.o FFmpegOpt.o FFmpegUtil.o 
 
 .PHONY: clean
 
-ffavapi : $(OBJS)
-	$(CXX) $(CXXFLAGS) $(OBJS) $(LIBS) $(INCLUDE) -o ffavapi
+FFmpegApi : $(OBJS)
+	$(CXX) $(CXXFLAGS) $(OBJS) $(LIBS) $(INCLUDE) -o FFmpegApi
 
-ffavfilter.o : ffavfilter.cpp ffavfilter.h
-	$(CXX) -c $(CXXFLAGS) ffavfilter.cpp
+FFmpegFilter.o : FFmpegFilter.cpp FFmpegFilter.h
+	$(CXX) -c $(CXXFLAGS) FFmpegFilter.cpp
 
 ffavhw.o : ffavhw.cpp ffavhw.h 
 	$(CXX) -c $(CXXFLAGS) ffavhw.cpp 
 
-ffavopt.o : ffavopt.cpp ffavopt.h 
-	$(CXX) -c $(CXXFLAGS) ffavopt.cpp
+FFmpegOpt.o : FFmpegOpt.cpp FFmpegOpt.h 
+	$(CXX) -c $(CXXFLAGS) FFmpegOpt.cpp
 
-ffcmdutil.o : ffcmdutil.cpp ffcmdutil.h
-	$(CXX) -c $(CXXFLAGS) ffcmdutil.cpp
+FFmpegUtil.o : FFmpegUtil.cpp FFmpegUtil.h
+	$(CXX) -c $(CXXFLAGS) FFmpegUtil.cpp
 
 clean:
-	rm -rf *.o ffavapi
+	rm -rf *.o *.log FFmpegApi

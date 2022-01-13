@@ -1,0 +1,8 @@
+# Print log
+*.log
+
+# Compiled Object files
+*.o
+
+# Executables
+FFmpegApi

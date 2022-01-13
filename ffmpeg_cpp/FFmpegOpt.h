@@ -30,10 +30,31 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "ffavopt.h"
+#ifndef _FFMPEGOPT_H
+#define _FFMPEGOPT_H
+
+#include <iostream>
 
 /**
  * 调用server端对象方法
  * @param req
  * @return int
  */
+
+class FFmpegOpt {
+public:
+    FFmpegOpt() {}
+    ~FFmpegOpt() {}
+    /**
+     * 分析参数选项
+     * @param argc-参数个数
+     * @param argv-参数数组
+     * @return int
+     */
+    int parseOptions(int argc, char *argv[]);
+
+private:
+
+};
+
+#endif

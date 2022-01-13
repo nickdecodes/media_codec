@@ -30,11 +30,10 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "ffavfilter.h"
+#include "FFmpegUtil.h"
 
 /**
  * 调用server端对象方法
  * @param req
  * @return int
  */
-

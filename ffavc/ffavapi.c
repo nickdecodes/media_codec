@@ -198,5 +198,7 @@
  */
 int main(int argc, char *argv[]) {
     int i, ret;
+    /* parse options and open all input/output files */
+    ret = parse_options(argc, argv);
     return 0;
 }

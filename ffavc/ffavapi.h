@@ -38,7 +38,9 @@
 #include <signal.h>
 
 #include "ffcmdutil.h"
-
+#include "ffavopt.h"
+#include "ffavhw.h"
+#include "ffavfilter.h"
 
 /**
  * 调用server端对象方法

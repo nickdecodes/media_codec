@@ -30,18 +30,43 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _FFAVAPI_H
-#define _FFAVAPI_H
+#include "FFmpegApi.h"
 
-#include <iostream>
-#include <stdint.h>
-#include <stdio.h>
-#include <signal.h>
+/**
+ * 命令行调用API主入口
+ * @param argc-参数个数
+ * @param argv-参数数组
+ * @return int
+ */
 
 
 /**
- * 调用server端对象方法
- * @param req
+ * 命令行调用API主入口
+ * @param argc-参数个数
+ * @param argv-参数数组
  * @return int
+ * @ffmpeg [全局选项] [输入选项] -i [输入流几文件] [输出选项] -f [格式] [输出流及文件]
  */
-#endif
+int main(int argc, char *argv[]) {
+    int ret = 0;
+    // 设置日志
+    LOG_SET_LEVEL(log::LogLevel::DEBUG);
+    LOG_SET_TARGET(log::LogLevel::FILES, "./tmp.log");
+    LOG_DEBUG << argv[1];
+    // 分析参数选项
+    FFmpegOpt ffmpegOpt;
+    ret = ffmpegOpt.parseOptions(argc, argv);
+    if (ret < 0) {
+        return ret;
+    }
+
+    // 打开输入文件
+
+    // 打开输出文件
+
+    // 初始化过滤器
+
+    // 进行编码
+
+    return ret;
+}

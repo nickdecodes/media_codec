@@ -30,10 +30,11 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _FFAVOPT_H
-#define _FFAVOPT_H
+#ifndef _FFMPEGFILTER_H
+#define _FFMPEGFILTER_H
 
 #include <iostream>
+
 
 /**
  * 调用server端对象方法
