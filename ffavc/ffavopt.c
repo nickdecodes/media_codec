@@ -38,7 +38,8 @@
  * @param argv-参数数组
  * @return int
  */
-int parse_options(int argc, char **argv) {
+int parse_options(int argc, char *argv[]) {
+    /* 参数解析的上下文 */
     OptionParseContext octx;
     uint8_t error[128];
     int ret;

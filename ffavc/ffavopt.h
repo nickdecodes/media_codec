@@ -34,10 +34,17 @@
 #define _FFAVOPT_H
 
 #include <stdio.h>
+#include "ffavutil.h"
 
 /**
- * 调用server端对象方法
- * @param req
+ * 分析参数选项
+ * @param argc-参数个数
+ * @param argv-参数数组
  * @return int
  */
+int ffmpeg_parse_options(int argc, char *argv[]) {
+
+    return 0;
+}
+
 #endif
